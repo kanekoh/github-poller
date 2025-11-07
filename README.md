@@ -6,6 +6,19 @@ Kubernetes CronJob として動作する GitHub リポジトリ監視システ�
 
 このシステムは、Webhook が利用できない環境（インターネットから隔離されたクラスタなど）において、GitHub リポジトリの変更を検知し、CI/CD パイプラインを自動実行するために設計されています。
 
+### 参考文献
+
+このプロジェクトのアイディアは、Red Hat の以下のブログ記事をベースに実装されています：
+
+📖 [Polling triggers in OpenShift Pipeline](https://www.redhat.com/ja/blog/polling-triggers-in-openshift-pipeline) - Red Hat Blog
+
+ブログ記事では CronJob と EventListener を組み合わせたアプローチが紹介されていますが、本実装では以下の改良を加えています：
+
+- **Kubernetes API 直接利用**: EventListener を経由せず、Kubernetes Python Client で PipelineRun を直接作成
+- **プレースホルダー機能**: ConfigMap の冗長性を削減する変数展開機能
+- **包括的なテストスイート**: 76% のコードカバレッジを持つユニットテスト
+- **Red Hat UBI ベース**: エンタープライズグレードのコンテナイメージ
+
 ### 主な特徴
 
 - **軽量**: Git クローンを行わず、GitHub API でメタ情報のみを取得
@@ -682,6 +695,21 @@ python src/poller.py
 cd examples/
 cat README.md  # 詳細な手順を確認
 ```
+
+---
+
+## 参考資料
+
+### オリジナルのアイディア
+
+- [Polling triggers in OpenShift Pipeline](https://www.redhat.com/ja/blog/polling-triggers-in-openshift-pipeline) - Red Hat Blog  
+  Daein Park 氏による OpenShift Pipeline でのポーリングトリガーの実装方法
+
+### 関連ドキュメント
+
+- [Tekton Pipelines Documentation](https://tekton.dev/docs/)
+- [Kubernetes Python Client](https://github.com/kubernetes-client/python)
+- [PyGithub Documentation](https://pygithub.readthedocs.io/)
 
 ---
 
