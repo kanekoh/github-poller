@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+.venv/
+
+# uv
+.python-version
+
+# テスト・カバレッジ
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.tox/
+*.cover
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kubernetes secrets (never commit real secrets!)
+k8s/secret-prod.yaml
+k8s/secret-*.yaml
+!k8s/secret.yaml
+examples/kubernetes/*secret*.yaml
+!examples/kubernetes/secret.yaml.template
+
+# Local testing
+.env
+config-local.yaml
+

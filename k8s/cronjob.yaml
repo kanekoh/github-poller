@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: github-poller
+  namespace: default
+spec:
+  # 5分ごとに実行（必要に応じて調整してください）
+  schedule: "*/5 * * * *"
+  # 同時実行を禁止（前回のジョブが完了してから次を実行）
+  concurrencyPolicy: Forbid
+  # 成功したジョブの履歴を3つまで保持
+  successfulJobsHistoryLimit: 3
+  # 失敗したジョブの履歴を3つまで保持
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # ジョブが完了しない場合、10分でタイムアウト
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app: github-poller
+        spec:
+          serviceAccountName: github-poller
+          restartPolicy: OnFailure
+          containers:
+            - name: poller
+              # イメージをビルドして適切なレジストリに配置してください
+              image: your-registry/github-poller:latest
+              imagePullPolicy: Always
+              env:
+                # ネームスペース
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                # ConfigMap名
+                - name: CONFIGMAP_NAME
+                  value: "github-poller-config"
+                # GitHub トークンの場所
+                - name: GITHUB_TOKEN_FILE
+                  value: "/secrets/github-token"
+              volumeMounts:
+                # GitHub トークンをマウント
+                - name: github-secret
+                  mountPath: /secrets
+                  readOnly: true
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "200m"
+          volumes:
+            - name: github-secret
+              secret:
+                secretName: github-poller-secret
+                items:
+                  - key: github-token
+                    path: github-token
+

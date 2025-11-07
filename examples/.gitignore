@@ -1,0 +1,12 @@
+# Secret ファイルは Git にコミットしない
+kubernetes/test-secret.yaml
+
+# 実際のトークンを含むファイル
+*-prod.yaml
+*-production.yaml
+*.secret.yaml
+
+# テスト用の一時ファイル
+*.tmp
+*.bak
+

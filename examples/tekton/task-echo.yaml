@@ -1,0 +1,92 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echo-task
+  namespace: default
+  annotations:
+    description: "シンプルな Echo タスク - GitHub Poller のテスト用"
+spec:
+  description: |
+    パラメータを受け取って標準出力に表示するシンプルなタスク。
+    GitHub Poller によってパイプラインが起動されたことを確認するために使用します。
+  
+  params:
+    - name: message
+      type: string
+      description: "表示するメッセージ"
+      default: "Hello from Tekton!"
+    
+    - name: repo-url
+      type: string
+      description: "リポジトリの URL"
+      default: "N/A"
+    
+    - name: branch
+      type: string
+      description: "ブランチ名"
+      default: "main"
+  
+  steps:
+    - name: echo-header
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      script: |
+        #!/bin/bash
+        echo "=================================================================="
+        echo "  Tekton Pipeline Triggered by GitHub Poller"
+        echo "=================================================================="
+        echo ""
+    
+    - name: echo-params
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      script: |
+        #!/bin/bash
+        echo "📋 Pipeline Parameters:"
+        echo "  • Message:     $(params.message)"
+        echo "  • Repository:  $(params.repo-url)"
+        echo "  • Branch:      $(params.branch)"
+        echo ""
+    
+    - name: echo-timestamp
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      script: |
+        #!/bin/bash
+        echo "🕐 Execution Time:"
+        echo "  • Date: $(date '+%Y-%m-%d')"
+        echo "  • Time: $(date '+%H:%M:%S %Z')"
+        echo "  • Timestamp: $(date '+%s')"
+        echo ""
+    
+    - name: echo-environment
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      script: |
+        #!/bin/bash
+        echo "🖥️  Environment:"
+        echo "  • Hostname: $(hostname)"
+        echo "  • User: $(whoami)"
+        echo "  • Working Dir: $(pwd)"
+        echo ""
+    
+    - name: simulate-work
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      script: |
+        #!/bin/bash
+        echo "⚙️  Simulating work..."
+        for i in {1..5}; do
+          echo "  Step $i/5 - Processing..."
+          sleep 1
+        done
+        echo "  ✅ Work completed successfully!"
+        echo ""
+    
+    - name: echo-footer
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      script: |
+        #!/bin/bash
+        echo "=================================================================="
+        echo "  ✅ Pipeline Execution Completed Successfully"
+        echo "=================================================================="
+        echo ""
+        echo "This pipeline was automatically triggered by GitHub Poller"
+        echo "when a change was detected in the repository."
+        echo ""
+

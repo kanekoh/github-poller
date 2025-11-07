@@ -1,0 +1,87 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: demo-pipeline
+  namespace: default
+  annotations:
+    description: "GitHub Poller テスト用デモパイプライン"
+spec:
+  description: |
+    GitHub Poller によって自動的に起動されるデモパイプライン。
+    リポジトリの変更を検出すると、このパイプラインが実行されます。
+  
+  params:
+    - name: repo-url
+      type: string
+      description: "GitHub リポジトリの URL"
+      default: "https://github.com/example/repo"
+    
+    - name: branch
+      type: string
+      description: "ブランチ名"
+      default: "main"
+  
+  tasks:
+    - name: start-notification
+      taskRef:
+        name: echo-task
+      params:
+        - name: message
+          value: "🚀 Pipeline Started - Change detected by GitHub Poller!"
+        - name: repo-url
+          value: $(params.repo-url)
+        - name: branch
+          value: $(params.branch)
+    
+    - name: fetch-info
+      runAfter:
+        - start-notification
+      taskRef:
+        name: echo-task
+      params:
+        - name: message
+          value: "📥 Fetching repository information..."
+        - name: repo-url
+          value: $(params.repo-url)
+        - name: branch
+          value: $(params.branch)
+    
+    - name: build-simulation
+      runAfter:
+        - fetch-info
+      taskRef:
+        name: echo-task
+      params:
+        - name: message
+          value: "🔨 Simulating build process..."
+        - name: repo-url
+          value: $(params.repo-url)
+        - name: branch
+          value: $(params.branch)
+    
+    - name: test-simulation
+      runAfter:
+        - build-simulation
+      taskRef:
+        name: echo-task
+      params:
+        - name: message
+          value: "🧪 Simulating test execution..."
+        - name: repo-url
+          value: $(params.repo-url)
+        - name: branch
+          value: $(params.branch)
+    
+    - name: completion-notification
+      runAfter:
+        - test-simulation
+      taskRef:
+        name: echo-task
+      params:
+        - name: message
+          value: "✅ Pipeline Completed Successfully!"
+        - name: repo-url
+          value: $(params.repo-url)
+        - name: branch
+          value: $(params.branch)
+
