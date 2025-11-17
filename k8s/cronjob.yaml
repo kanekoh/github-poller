@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: github-poller
-  namespace: default
+  namespace: github-poller
 spec:
   # 5分ごとに実行（必要に応じて調整してください）
   schedule: "*/5 * * * *"
@@ -37,7 +37,11 @@ spec:
                 # ConfigMap名
                 - name: CONFIGMAP_NAME
                   value: "github-poller-config"
-                # GitHub トークンの場所
+                # GitHub 認証タイプ: 'app' (GitHub Apps) または 'pat' (Personal Access Token)
+                # デフォルト: 'app'
+                - name: GITHUB_AUTH_TYPE
+                  value: "app"
+                # GitHub トークンの場所（PAT 使用時）
                 - name: GITHUB_TOKEN_FILE
                   value: "/secrets/github-token"
               volumeMounts:
@@ -56,7 +60,8 @@ spec:
             - name: github-secret
               secret:
                 secretName: github-poller-secret
-                items:
-                  - key: github-token
-                    path: github-token
+                # GitHub Apps 使用時は app-id, installation-id, private-key が必要
+                # PAT 使用時は github-token が必要
+                # Secret に含まれるすべてのキーをマウント
+                optional: false
 

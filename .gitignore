@@ -36,8 +36,10 @@ Thumbs.db
 k8s/secret-prod.yaml
 k8s/secret-*.yaml
 !k8s/secret.yaml
+!k8s/secret-github-app.yaml
 examples/kubernetes/*secret*.yaml
 !examples/kubernetes/secret.yaml.template
+!examples/kubernetes/secret-github-app.yaml.template
 
 # Local testing
 .env

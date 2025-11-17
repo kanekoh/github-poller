@@ -8,6 +8,9 @@ import os
 import sys
 import logging
 import yaml
+import time
+import jwt
+import requests
 from datetime import datetime
 from typing import Dict, List, Optional
 from github import Github, GithubException
@@ -27,8 +30,9 @@ class GitHubPoller:
     
     def __init__(self):
         """Initialize the poller with Kubernetes and GitHub clients."""
-        self.namespace = os.getenv('NAMESPACE', 'default')
+        self.namespace = os.getenv('NAMESPACE', 'github-poller')
         self.configmap_name = os.getenv('CONFIGMAP_NAME', 'github-poller-config')
+        self.auth_type = os.getenv('GITHUB_AUTH_TYPE', 'app').lower()
         self.github_token = self._get_github_token()
         
         # Initialize Kubernetes client
@@ -43,7 +47,27 @@ class GitHubPoller:
         self.github_client = Github(self.github_token)
         
     def _get_github_token(self) -> str:
-        """Get GitHub token from environment or Secret."""
+        """
+        Get GitHub token (supports both PAT and GitHub Apps).
+        
+        Authentication type is determined by GITHUB_AUTH_TYPE environment variable:
+        - 'app' (default): GitHub Apps authentication
+        - 'pat': Personal Access Token authentication
+        """
+        if self.auth_type == 'app':
+            logger.info("Using GitHub App authentication")
+            try:
+                return self._get_github_app_token()
+            except Exception as e:
+                logger.error(f"GitHub App authentication failed: {e}")
+                logger.info("Falling back to Personal Access Token")
+                return self._get_pat_token()
+        else:
+            logger.info("Using Personal Access Token authentication")
+            return self._get_pat_token()
+    
+    def _get_pat_token(self) -> str:
+        """Get Personal Access Token from environment or Secret."""
         token = os.getenv('GITHUB_TOKEN')
         if not token:
             token_file = os.getenv('GITHUB_TOKEN_FILE', '/secrets/github-token')
@@ -54,6 +78,68 @@ class GitHubPoller:
                 logger.error(f"GitHub token not found. Set GITHUB_TOKEN env var or provide {token_file}")
                 sys.exit(1)
         return token
+    
+    def _get_github_app_token(self) -> str:
+        """Get GitHub App installation token."""
+        app_id = self._read_secret('app-id', 'GITHUB_APP_ID')
+        installation_id = self._read_secret('installation-id', 'GITHUB_INSTALLATION_ID')
+        private_key = self._read_secret('private-key', 'GITHUB_PRIVATE_KEY')
+        
+        # Generate JWT
+        jwt_token = self._generate_jwt(app_id, private_key)
+        
+        # Fetch installation token
+        return self._fetch_installation_token(installation_id, jwt_token)
+    
+    def _read_secret(self, filename: str, env_var: str) -> str:
+        """Read secret from file or environment variable."""
+        value = os.getenv(env_var)
+        if not value:
+            secret_file = f'/secrets/{filename}'
+            try:
+                with open(secret_file, 'r') as f:
+                    value = f.read().strip()
+            except FileNotFoundError:
+                raise ValueError(f"Secret not found: {env_var} env var or {secret_file} file")
+        return value
+    
+    def _generate_jwt(self, app_id: str, private_key: str) -> str:
+        """Generate JWT for GitHub App authentication."""
+        now = int(time.time())
+        payload = {
+            'iat': now,           # Issued at time
+            'exp': now + 600,     # JWT expiration time (10 minutes)
+            'iss': app_id         # GitHub App's identifier
+        }
+        
+        jwt_token = jwt.encode(payload, private_key, algorithm='RS256')
+        logger.debug(f"Generated JWT for App ID: {app_id}")
+        
+        return jwt_token
+    
+    def _fetch_installation_token(self, installation_id: str, jwt_token: str) -> str:
+        """Fetch installation access token from GitHub API."""
+        url = f"https://api.github.com/app/installations/{installation_id}/access_tokens"
+        headers = {
+            'Authorization': f'Bearer {jwt_token}',
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            token_data = response.json()
+            token = token_data['token']
+            expires_at = token_data['expires_at']
+            
+            logger.info(f"Installation token acquired for installation {installation_id}, expires at {expires_at}")
+            return token
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch installation token: {e}")
+            raise
     
     def get_configmap(self) -> Dict:
         """Retrieve the ConfigMap containing repository configurations."""

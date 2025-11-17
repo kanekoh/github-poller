@@ -63,30 +63,30 @@ rm examples/kubernetes/secret-local.yaml  # 使用後は削除
 # 💡 詳細は examples/kubernetes/README.md を参照
 ```
 
-#### 4. CronJob を手動実行してテスト
+#### 5. CronJob を手動実行してテスト
 
 ```bash
 # 手動でジョブを作成
-kubectl create job --from=cronjob/github-poller github-poller-test
+kubectl create job --from=cronjob/github-poller github-poller-test -n github-poller
 
 # ログを確認
-kubectl logs -f job/github-poller-test
+kubectl logs -f job/github-poller-test -n github-poller
 
 # PipelineRun が作成されたか確認
-kubectl get pipelinerun
+kubectl get pipelinerun -n github-poller
 
 # PipelineRun のログを確認
-kubectl logs -l tekton.dev/pipeline=demo-pipeline -f
+kubectl logs -l tekton.dev/pipeline=demo-pipeline -n github-poller -f
 ```
 
-#### 5. 結果の確認
+#### 6. 結果の確認
 
 ```bash
 # ConfigMap が更新されているか確認
-kubectl get configmap github-poller-config -o yaml
+kubectl get configmap github-poller-config -n github-poller -o yaml
 
 # PipelineRun の詳細を確認
-kubectl describe pipelinerun <pipelinerun-name>
+kubectl describe pipelinerun <pipelinerun-name> -n github-poller
 ```
 
 ## サンプルアプリについて
@@ -126,7 +126,7 @@ kubectl describe pipelinerun <pipelinerun-name>
 
 ```bash
 # ServiceAccount の権限を確認
-kubectl auth can-i create pipelineruns --as=system:serviceaccount:default:github-poller
+kubectl auth can-i create pipelineruns --as=system:serviceaccount:github-poller:github-poller
 ```
 
 ## カスタマイズ

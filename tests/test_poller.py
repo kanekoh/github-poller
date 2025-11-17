@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import Mock, MagicMock, patch, call
 from datetime import datetime
 import yaml
+import time
 
 # テスト対象のモジュールをインポート
 import sys
@@ -20,10 +21,23 @@ class TestGitHubPoller:
     
     @pytest.fixture
     def mock_env(self, monkeypatch):
-        """環境変数のモック"""
+        """環境変数のモック（PAT 用）"""
         monkeypatch.setenv('NAMESPACE', 'test-namespace')
         monkeypatch.setenv('CONFIGMAP_NAME', 'test-configmap')
         monkeypatch.setenv('GITHUB_TOKEN', 'test-token-123')
+        monkeypatch.setenv('GITHUB_AUTH_TYPE', 'pat')  # PAT を使用
+    
+    @pytest.fixture
+    def mock_env_github_app(self, monkeypatch):
+        """環境変数のモック（GitHub Apps 用）"""
+        monkeypatch.setenv('NAMESPACE', 'test-namespace')
+        monkeypatch.setenv('CONFIGMAP_NAME', 'test-configmap')
+        monkeypatch.setenv('GITHUB_AUTH_TYPE', 'app')
+        monkeypatch.setenv('GITHUB_APP_ID', '123456')
+        monkeypatch.setenv('GITHUB_INSTALLATION_ID', '987654')
+        monkeypatch.setenv('GITHUB_PRIVATE_KEY', '''-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA1234567890abcdefghijklmnopqrstuvwxyz
+-----END RSA PRIVATE KEY-----''')
     
     @pytest.fixture
     def poller(self, mock_env):

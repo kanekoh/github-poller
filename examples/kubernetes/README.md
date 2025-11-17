@@ -32,10 +32,10 @@ export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
 # Secret を作成
 kubectl create secret generic github-poller-secret \
   --from-literal=github-token=$GITHUB_TOKEN \
-  --namespace=default
+  --namespace=github-poller
 
 # 確認
-kubectl get secret github-poller-secret -n default
+kubectl get secret github-poller-secret -n github-poller
 ```
 
 ### 方法2: テンプレートから作成（開発環境のみ）
@@ -59,7 +59,7 @@ rm secret-local.yaml
 ```bash
 kubectl create secret generic github-poller-secret \
   --from-literal=github-token=YOUR_TOKEN_HERE \
-  --namespace=default
+  --namespace=github-poller
 ```
 
 ## GitHub Token の取得方法
@@ -87,7 +87,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: github-poller-secret
-  namespace: default
+  namespace: github-poller
 type: Opaque
 stringData:
   github-token: "ghp_xxxxxxxxxxxxxxxxxxxx"
@@ -97,32 +97,32 @@ stringData:
 
 ```bash
 # Secret が存在するか確認
-kubectl get secret github-poller-secret -n default
+kubectl get secret github-poller-secret -n github-poller
 
 # Secret の詳細を表示（Base64 エンコードされた状態）
-kubectl get secret github-poller-secret -n default -o yaml
+kubectl get secret github-poller-secret -n github-poller -o yaml
 
 # Secret の値をデコード（注意: ターミナルに表示されます）
-kubectl get secret github-poller-secret -n default -o jsonpath='{.data.github-token}' | base64 -d
+kubectl get secret github-poller-secret -n github-poller -o jsonpath='{.data.github-token}' | base64 -d
 ```
 
 ## Secret の更新
 
 ```bash
 # 既存の Secret を削除
-kubectl delete secret github-poller-secret -n default
+kubectl delete secret github-poller-secret -n github-poller
 
 # 新しいトークンで再作成
 kubectl create secret generic github-poller-secret \
   --from-literal=github-token=NEW_TOKEN_HERE \
-  --namespace=default
+  --namespace=github-poller
 ```
 
 または、直接編集：
 
 ```bash
 # Secret を Base64 エンコードして編集
-kubectl edit secret github-poller-secret -n default
+kubectl edit secret github-poller-secret -n github-poller
 ```
 
 ## セキュリティのベストプラクティス
@@ -152,12 +152,12 @@ kubectl edit secret github-poller-secret -n default
 
 ```bash
 # 正しい namespace を指定しているか確認
-kubectl get secret -n default
+kubectl get secret -n github-poller
 
 # Secret を再作成
 kubectl create secret generic github-poller-secret \
   --from-literal=github-token=$GITHUB_TOKEN \
-  --namespace=default
+  --namespace=github-poller
 ```
 
 ### 認証エラー
