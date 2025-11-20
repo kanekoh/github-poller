@@ -2,7 +2,6 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: github-poller
-  namespace: github-poller
 spec:
   # 5分ごとに実行（必要に応じて調整してください）
   schedule: "*/5 * * * *"

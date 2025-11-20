@@ -71,7 +71,6 @@ github-poller/
 │   ├── test_poller.py         # ユニットテスト
 │   └── README.md              # テスト実行方法
 ├── k8s/
-│   ├── namespace.yaml         # Namespace 定義
 │   ├── serviceaccount.yaml    # ServiceAccount 定義
 │   ├── role.yaml              # RBAC Role（ConfigMap 読み書き、PipelineRun 作成）
 │   ├── rolebinding.yaml       # RoleBinding
@@ -111,38 +110,39 @@ github-poller/
 # 1. Tekton Pipelines のインストール（未インストールの場合）
 kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 
-# 2. Namespace を作成
-kubectl create namespace github-poller
+# 2. Namespace を作成（使用する namespace を決定）
+export NAMESPACE="github-poller"
+kubectl create namespace $NAMESPACE
 
 # 3. サンプルの Tekton リソースをデプロイ
-kubectl apply -f examples/tekton/
+kubectl apply -f examples/tekton/ -n $NAMESPACE
 
 # 4. GitHub トークンで Secret を作成
 kubectl create secret generic github-poller-secret \
   --from-literal=github-token=YOUR_GITHUB_TOKEN_HERE \
-  --namespace=github-poller
+  -n $NAMESPACE
 
 # 5. サンプル ConfigMap を編集
 # YOUR-USERNAME/YOUR-REPO を実際の GitHub リポジトリに変更
 vi examples/kubernetes/configmap-sample.yaml
 
 # 6. ConfigMap を適用
-kubectl apply -f examples/kubernetes/configmap-sample.yaml
+kubectl apply -f examples/kubernetes/configmap-sample.yaml -n $NAMESPACE
 
 # 7. GitHub Poller の本体をデプロイ（イメージビルドが必要）
 # ※ このステップは「セットアップ手順」を参照してください
 
 # 8. 手動でテスト実行
-kubectl create job --from=cronjob/github-poller github-poller-test -n github-poller
+kubectl create job --from=cronjob/github-poller github-poller-test -n $NAMESPACE
 
 # 9. ログを確認
-kubectl logs -f job/github-poller-test -n github-poller
+kubectl logs -f job/github-poller-test -n $NAMESPACE
 
 # 10. パイプラインが起動されたか確認
-kubectl get pipelinerun -n github-poller
+kubectl get pipelinerun -n $NAMESPACE
 
 # 11. パイプラインのログを確認
-kubectl logs -l tekton.dev/pipeline=demo-pipeline -n github-poller -f
+kubectl logs -l tekton.dev/pipeline=demo-pipeline -n $NAMESPACE -f
 ```
 
 ### サンプルの内容
@@ -209,15 +209,20 @@ GitHub にプッシュしてテストできる最小限のサンプルアプリ�
 
 ### 重要: Namespace について
 
-このシステムは **`github-poller` という専用の namespace** を使用します。
+このシステムは任意の namespace で動作します。デフォルトでは `github-poller` という namespace を使用しますが、環境変数 `NAMESPACE` で変更可能です。
 
 ```bash
-# Namespace を作成
-kubectl apply -f k8s/namespace.yaml
+# 使用する namespace を決定（例: github-poller）
+export NAMESPACE="github-poller"
 
-# または手動で作成
-kubectl create namespace github-poller
+# Namespace を作成（まだ存在しない場合）
+kubectl create namespace $NAMESPACE
+
+# または既存の namespace を使用
+export NAMESPACE="your-existing-namespace"
 ```
+
+**注意**: すべてのリソースは同じ namespace にデプロイする必要があります。リソースの YAML ファイルには `namespace` フィールドが含まれていないため、`kubectl apply -n <namespace>` で namespace を指定してデプロイしてください。
 
 ### 1. GitHub Personal Access Token の作成
 
@@ -250,15 +255,15 @@ docker push your-registry/github-poller:latest
 # Private Key ファイルを準備
 # GitHub App 設定ページからダウンロードした .pem ファイル
 
-# Secret を作成
+# Secret を作成（NAMESPACE 環境変数を設定済みの場合）
 kubectl create secret generic github-poller-secret \
   --from-literal=app-id=YOUR_APP_ID \
   --from-literal=installation-id=YOUR_INSTALLATION_ID \
   --from-file=private-key=/path/to/your-app.private-key.pem \
-  --namespace=github-poller
+  -n $NAMESPACE
 
 # 確認
-kubectl get secret github-poller-secret -n github-poller
+kubectl get secret github-poller-secret -n $NAMESPACE
 ```
 
 または、YAML から作成（テンプレートを使用）：
@@ -270,8 +275,8 @@ cp k8s/secret-github-app.yaml k8s/secret-local.yaml
 # 実際の値を設定
 vi k8s/secret-local.yaml
 
-# 適用
-kubectl apply -f k8s/secret-local.yaml
+# 適用（NAMESPACE 環境変数を設定済みの場合）
+kubectl apply -f k8s/secret-local.yaml -n $NAMESPACE
 
 # 削除（重要！）
 rm k8s/secret-local.yaml
@@ -283,13 +288,13 @@ rm k8s/secret-local.yaml
 # 環境変数に GitHub トークンを設定
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
 
-# Secret を作成
+# Secret を作成（NAMESPACE 環境変数を設定済みの場合）
 kubectl create secret generic github-poller-secret \
   --from-literal=github-token=$GITHUB_TOKEN \
-  --namespace=github-poller
+  -n $NAMESPACE
 
 # 確認
-kubectl get secret github-poller-secret -n github-poller
+kubectl get secret github-poller-secret -n $NAMESPACE
 ```
 
 ⚠️ **重要**: Secret ファイルを Git にコミットしないでください。`.gitignore` で保護されています。
@@ -314,41 +319,51 @@ data:
         lastCheckedSHA: ""
 ```
 
-ConfigMap を作成：
+ConfigMap を作成（NAMESPACE 環境変数を設定済みの場合）：
 
 ```bash
-kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/configmap.yaml -n $NAMESPACE
 ```
 
 ### 5. すべてのリソースをデプロイ
 
+**重要**: すべてのリソースは同じ namespace にデプロイする必要があります。`NAMESPACE` 環境変数を設定してからデプロイしてください。
+
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
+# Namespace が存在しない場合は作成
+kubectl create namespace $NAMESPACE
+
 # すべてのリソースを一括でデプロイ
-kubectl apply -f k8s/
+kubectl apply -f k8s/ -n $NAMESPACE
 
 # または、個別にデプロイ
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/serviceaccount.yaml
-kubectl apply -f k8s/role.yaml
-kubectl apply -f k8s/rolebinding.yaml
-kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/cronjob.yaml
+kubectl apply -f k8s/serviceaccount.yaml -n $NAMESPACE
+kubectl apply -f k8s/role.yaml -n $NAMESPACE
+kubectl apply -f k8s/rolebinding.yaml -n $NAMESPACE
+kubectl apply -f k8s/configmap.yaml -n $NAMESPACE
+kubectl apply -f k8s/secret-github-app.yaml -n $NAMESPACE  # または secret.yaml
+kubectl apply -f k8s/cronjob.yaml -n $NAMESPACE
 ```
+
+**注意**: CronJob の環境変数 `NAMESPACE` は、Pod が実行される namespace から自動的に取得されます（`metadata.namespace` フィールド参照）。手動で設定する必要はありません。
 
 ### 6. 動作確認
 
 ```bash
-# リソースが正しくデプロイされたか確認
-kubectl get all -n github-poller
+# リソースが正しくデプロイされたか確認（NAMESPACE 環境変数を設定済みの場合）
+kubectl get all -n $NAMESPACE
 
 # CronJob の状態を確認
-kubectl get cronjob -n github-poller
+kubectl get cronjob -n $NAMESPACE
 
 # 手動でジョブを実行してテスト
-kubectl create job --from=cronjob/github-poller github-poller-test -n github-poller
+kubectl create job --from=cronjob/github-poller github-poller-test -n $NAMESPACE
 
 # ログを確認
-kubectl logs -n github-poller -l app=github-poller --tail=100
+kubectl logs -n $NAMESPACE -l app=github-poller --tail=100
 ```
 
 ## ConfigMap 設定詳細
@@ -443,34 +458,43 @@ repositories:
 ### CronJob の状態確認
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # CronJob の確認
-kubectl get cronjob github-poller
+kubectl get cronjob github-poller -n $NAMESPACE
 
 # 最近のジョブ実行履歴
-kubectl get jobs -l app=github-poller
+kubectl get jobs -l app=github-poller -n $NAMESPACE
 
 # Pod のログ確認
-kubectl logs -l app=github-poller --tail=100
+kubectl logs -l app=github-poller --tail=100 -n $NAMESPACE
 ```
 
 ### 手動実行（テスト用）
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # CronJob から手動でジョブを作成
-kubectl create job --from=cronjob/github-poller github-poller-manual
+kubectl create job --from=cronjob/github-poller github-poller-manual -n $NAMESPACE
 
 # ログを確認
-kubectl logs -l job-name=github-poller-manual -f
+kubectl logs -l job-name=github-poller-manual -f -n $NAMESPACE
 ```
 
 ### ConfigMap の確認
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # 現在の設定を確認
-kubectl get configmap github-poller-config -o yaml
+kubectl get configmap github-poller-config -o yaml -n $NAMESPACE
 
 # SHA が更新されているか確認
-kubectl get configmap github-poller-config -o jsonpath='{.data.config\.yaml}' | grep lastCheckedSHA
+kubectl get configmap github-poller-config -o jsonpath='{.data.config\.yaml}' -n $NAMESPACE | grep lastCheckedSHA
 ```
 
 ## トラブルシューティング
@@ -478,11 +502,14 @@ kubectl get configmap github-poller-config -o jsonpath='{.data.config\.yaml}' | 
 ### ログの確認
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # 最新の Pod のログを確認
-kubectl logs -l app=github-poller --tail=100 -f
+kubectl logs -l app=github-poller --tail=100 -f -n $NAMESPACE
 
 # 特定の Job のログを確認
-kubectl logs job/github-poller-28381234 -f
+kubectl logs job/github-poller-28381234 -f -n $NAMESPACE
 ```
 
 ### よくある問題
@@ -496,8 +523,11 @@ kubectl logs job/github-poller-28381234 -f
 - トークンに適切なスコープ（repo または public_repo）が付与されているか確認
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # Secret の確認
-kubectl get secret github-poller-secret -o jsonpath='{.data.github-token}' | base64 -d
+kubectl get secret github-poller-secret -o jsonpath='{.data.github-token}' -n $NAMESPACE | base64 -d
 ```
 
 #### 2. ConfigMap の更新権限エラー
@@ -509,11 +539,14 @@ kubectl get secret github-poller-secret -o jsonpath='{.data.github-token}' | bas
 - Role と RoleBinding が正しく設定されているか確認
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # Role の確認
-kubectl get role github-poller -o yaml
+kubectl get role github-poller -o yaml -n $NAMESPACE
 
 # RoleBinding の確認
-kubectl get rolebinding github-poller -o yaml
+kubectl get rolebinding github-poller -o yaml -n $NAMESPACE
 ```
 
 #### 3. Pipeline の起動に失敗
@@ -526,11 +559,14 @@ kubectl get rolebinding github-poller -o yaml
 - Tekton が正しくインストールされているか確認
 
 ```bash
-# Pipeline の確認
-kubectl get pipeline
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
 
-# 権限の確認
-kubectl auth can-i create pipelineruns --as=system:serviceaccount:github-poller:github-poller
+# Pipeline の確認
+kubectl get pipeline -n $NAMESPACE
+
+# 権限の確認（NAMESPACE を実際の値に置き換える）
+kubectl auth can-i create pipelineruns --as=system:serviceaccount:$NAMESPACE:github-poller -n $NAMESPACE
 
 # Tekton のインストール確認
 kubectl get crd | grep tekton
@@ -697,7 +733,7 @@ pip install -r requirements.txt
 
 # 環境変数の設定
 export GITHUB_TOKEN="your_token_here"
-export NAMESPACE="github-poller"
+export NAMESPACE="github-poller"  # 使用する namespace を指定
 export CONFIGMAP_NAME="github-poller-config"
 
 # kubeconfig が設定されていることを確認

@@ -72,12 +72,15 @@ App 設定画面の上部に表示される **App ID** を記録します（例:
 ### 5. Secret の作成
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # Secret を作成
 kubectl create secret generic github-poller-secret \
   --from-literal=app-id=123456 \
   --from-literal=installation-id=987654 \
   --from-file=private-key=/path/to/your-app.private-key.pem \
-  --namespace=github-poller
+  -n $NAMESPACE
 ```
 
 ### 6. CronJob の環境変数を設定
@@ -102,10 +105,13 @@ env:
 ### 2. Secret の作成
 
 ```bash
+# 使用する namespace を設定
+export NAMESPACE="github-poller"
+
 # Secret を作成
 kubectl create secret generic github-poller-secret \
   --from-literal=github-token=ghp_xxxxxxxxxxxxxxxxxxxx \
-  --namespace=github-poller
+  -n $NAMESPACE
 ```
 
 ### 3. CronJob の環境変数を設定
@@ -178,8 +184,9 @@ ERROR: GitHub token not found. Set GITHUB_TOKEN env var or provide /secrets/gith
 - Secret が正しくマウントされていない
 
 **対処:**
-1. Secret の作成を確認：`kubectl get secret github-poller-secret -n github-poller`
-2. Secret の内容を確認：`kubectl get secret github-poller-secret -n github-poller -o yaml`
+1. 使用する namespace を設定：`export NAMESPACE="github-poller"`
+2. Secret の作成を確認：`kubectl get secret github-poller-secret -n $NAMESPACE`
+3. Secret の内容を確認：`kubectl get secret github-poller-secret -n $NAMESPACE -o yaml`
 
 ## セキュリティ上の注意
 

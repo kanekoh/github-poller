@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: demo-pipeline
-  namespace: github-poller
   annotations:
     description: "GitHub Poller テスト用デモパイプライン"
 spec:
